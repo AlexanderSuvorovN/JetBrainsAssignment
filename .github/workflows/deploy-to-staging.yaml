@@ -1,0 +1,29 @@
+on:
+  push:
+    branches:
+      - staging
+
+jobs:
+  staging-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set image tag
+        id: tag
+        run: echo "IMAGE_TAG=staging-${{ github.sha }}" >> $GITHUB_ENV
+
+      - name: Log in to Docker
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+
+      - name: Build and push Docker image
+        run: |
+          docker build -t suvorovbt/hello-world-app:${IMAGE_TAG} .
+          docker push suvorovbt/hello-world-app:${IMAGE_TAG}
+
+      - name: Deploy to staging
+        env:
+          IMAGE_TAG: ${{ steps.tag.outputs.image_tag }}
+        run: |
+          ./scripts/deploy.sh staging "${IMAGE_TAG}"
